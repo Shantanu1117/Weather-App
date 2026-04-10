@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Modern Weather App</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body {
+  transition: background-image 0.6s ease-in-out;
+}
+</style>
+</head>
+
+<body id="body" class="h-screen flex items-center justify-center bg-cover bg-center">
+
+
+<select id="language" onchange="changeLanguage()"
+class="absolute top-4 left-4 p-2 rounded bg-white/70">
+  <option value="en">English</option>
+  <option value="hi">Hindi</option>
+</select>
+
+
+<button onclick="toggleDarkMode()"
+class="absolute top-4 right-4 bg-black/40 text-white px-3 py-1 rounded">
+🌙
+</button>
+
+<div class="bg-white/20 backdrop-blur-lg shadow-2xl rounded-3xl p-8 w-[380px] text-center border border-white/30">
+
+  <h1 id="title" class="text-3xl font-bold text-white mb-6">🌤 India Weather</h1>
+
+  
+  <div class="relative mb-4">
+    <input id="stateInput" placeholder="Select State/City"
+      class="w-full p-3 rounded-lg text-black focus:ring-2 focus:ring-blue-400 outline-none"/>
+    <div id="stateList" class="absolute w-full bg-white text-black rounded-lg mt-1 max-h-32 overflow-y-auto shadow"></div>
+  </div>
+
+  <button id="weatherBtn" onclick="getWeather()"
+    class="bg-blue-500 hover:bg-blue-700 transition-all text-white px-6 py-2 rounded-lg shadow-lg">
+    Get Weather
+  </button>
+
+  <div id="loader" class="hidden mt-4 text-white animate-pulse">Loading...</div>
+
+  <div id="result" class="mt-4 text-white text-lg font-semibold"></div>
+
+</div>
+
+<script>
+const langData = {
+  en: {
+    title: "🌤 India Weather",
+    button: "Get Weather",
+    placeholder: "Select State/City",
+    error: "❌ City not found!",
+    enter: "⚠️ Enter a city"
+  },
+  hi: {
+    title: "🌤 भारत का मौसम",
+    button: "मौसम देखें",
+    placeholder: "राज्य / शहर चुनें",
+    error: "❌ शहर नहीं मिला!",
+    enter: "⚠️ शहर दर्ज करें"
+  }
+};
+const states = [
+  "Delhi","Mumbai","Punjab","Haryana","Bangalore","Chennai",
+  "Kolkata","Hyderabad","Jaipur","Lucknow","Bhopal","Patna"
+];
+const apiKey = "30b1e78c5ffb894172cd613631e5c6a9";
+let currentLang = "en";
+const bgi = {
+  sunny: "https://media.istockphoto.com/id/491701259/photo/blue-sky-with-sun.jpg?s=612x612&w=0&k=20&c=aB7c-e0YFezBb8cgSykiEcAh_2fXEie3inIudnsNa9g=",
+  rain: "https://t3.ftcdn.net/jpg/04/75/01/64/360_F_475016474_F4shPd9UBQJFRAxu4P7VXqZous5JzL0N.jpg",
+  snow: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7ZikP4kZUV65buu_jlEBQKsjIzzLLojoEfg&s",
+  thunder: "https://images.unsplash.com/photo-1594760467013-64ac2b80b7d3",
+  clouds: "https://thumbs.dreamstime.com/b/clouds-blue-sky-cloudy-weather-day-bahrain-suitable-graphic-design-high-quality-photo-275673479.jpg"
+};
+
+
+const input = document.getElementById("stateInput");
+const list = document.getElementById("stateList");
+
+input.addEventListener("input", () => {
+  const value = input.value.toLowerCase();
+  list.innerHTML = "";
+
+  states
+    .filter(s => s.toLowerCase().startsWith(value))
+    .forEach(s => {
+      const div = document.createElement("div");
+      div.textContent = s;
+      div.className = "p-2 hover:bg-gray-200 cursor-pointer";
+
+      div.onclick = () => {
+        input.value = s;
+        list.innerHTML = "";
+      };
+
+      list.appendChild(div);
+    });
+});
+
+
+async function getWeather() {
+  const city = input.value.trim();
+  const result = document.getElementById("result");
+  const loader = document.getElementById("loader");
+
+  if (!city) {
+    result.innerHTML = langData[currentLang].enter;
+    return;
+  }
+
+  loader.classList.remove("hidden");
+  result.innerHTML = "";
+
+  try {
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=${city},IN&appid=${apiKey}&units=metric&lang=${currentLang}`
+    );
+
+    const data = await res.json();
+
+    if (data.cod !== 200) throw new Error();
+
+    const temp = data.main.temp;
+    const condition = data.weather[0].main;
+
+    result.innerHTML = `
+      📍 ${city}, India <br>
+      🌡 ${temp}°C <br>
+      ☁ ${condition}
+    `;
+
+    changeBackground(condition);
+    applyNightEffect(data);
+
+  } catch {
+    result.innerHTML = langData[currentLang].error;
+  }
+
+  loader.classList.add("hidden");
+}
+
+function changeBackground(condition) {
+  const c = condition.toLowerCase();
+  const body = document.getElementById("body");
+
+  if (c.includes("rain") || c.includes("drizzle")) {
+    body.style.backgroundImage = `url(${bgi.rain})`;
+  } 
+  else if (c.includes("snow")) {
+    body.style.backgroundImage = `url(${bgi.snow})`;
+  } 
+  else if (c.includes("thunder")) {
+    body.style.backgroundImage = `url(${bgi.thunder})`;
+  } 
+  else if (
+    c.includes("cloud") ||
+    c.includes("mist") ||
+    c.includes("haze") ||
+    c.includes("fog")
+  ) {
+    body.style.backgroundImage = `url(${bgi.clouds})`;
+  } 
+  else {
+    body.style.backgroundImage = `url(${bgi.sunny})`;
+  }
+}
+
+
+function applyNightEffect(data) {
+  const body = document.getElementById("body");
+
+  const timezone = data.timezone;
+  const currentTime = Date.now() / 1000;
+  const localTime = currentTime + timezone;
+  const hours = new Date(localTime * 1000).getUTCHours();
+
+  if (hours >= 19 || hours <= 6) {
+    body.classList.add("brightness-50");
+  } else {
+    body.classList.remove("brightness-50");
+  }
+}
+
+
+function toggleDarkMode() {
+  document.body.classList.toggle("bg-black");
+  document.body.classList.toggle("text-white");
+}
+function changeLanguage() {
+  currentLang = document.getElementById("language").value;
+
+  document.getElementById("title").innerText = langData[currentLang].title;
+  document.getElementById("weatherBtn").innerText = langData[currentLang].button;
+  document.getElementById("stateInput").placeholder = langData[currentLang].placeholder;
+}
+
+</script>
+
+</body>
+</html>
